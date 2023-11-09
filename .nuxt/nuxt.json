@@ -1,0 +1,9 @@
+{
+  "_hash": "MrWPF3BmN0",
+  "project": {
+    "rootDir": "/var/www/html/nuxt-demo"
+  },
+  "versions": {
+    "nuxt": "3.8.1"
+  }
+}
