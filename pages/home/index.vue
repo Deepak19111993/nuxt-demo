@@ -1,4 +1,3 @@
-
 <template>
   <div class="home-wrapper">
     <h1>Home Page</h1>
@@ -7,24 +6,35 @@
     <div class="home-wrapper-content">
       <form @submit.prevent="formSubmit">
         <div class="form-item">
-          <input placeholder="name" name="name" v-model="formValue.name" />
+          <input placeholder="name" name="name" v-model="formValue.stuName" />
         </div>
         <div class="form-item">
           <input placeholder="roll no" name="roll" v-model="formValue.roll" />
         </div>
         <div class="form-item">
           <button type="submit">
-            {{ editIndex === -1 ? "submit" : "Update" }}
+            {{ editIndex === -1 ? 'submit' : 'Update' }}
           </button>
         </div>
       </form>
-      <div v-if="formArray.length > 0" class="listform-value">
-        <div v-for="(data, index) in formArray" :key="index" class="item">
+      <div v-if="students?.length > 0" class="listform-value">
+        <div v-for="(data, index) in students" :key="data?.id" class="item">
           <div>{{ index + 1 }}</div>
-          <div>{{ data.name }}</div>
-          <div>{{ data.roll }}</div>
-          <div class="delete" @click="deleteFun(index)">X</div>
-          <div class="delete" @click="editFun(index)">Edit</div>
+          <div>{{ data?.stuName }}</div>
+          <div>{{ data?.roll }}</div>
+          <div class="delete" @click="deleteFun(data?.id)">X</div>
+          <div class="delete" @click="editFun(data?.id)">Edit</div>
+        </div>
+      </div>
+    </div>
+    <div class="stu-name-wrapper">
+      <div
+        v-for="(boxData, boxIndex) in generateBoxes()"
+        :key="boxIndex"
+        class="box"
+      >
+        <div v-for="(data, index) in boxData" class="item" :key="index">
+          {{ data.stuName }}
         </div>
       </div>
     </div>
@@ -34,44 +44,95 @@
 <script setup>
 // const show = ref(false);
 
+import { base_url } from '~/constants/constant';
+
 // definePageMeta({
 //   middleware: "auth",
 // });
 
-let formValue = {
-  name: "",
-  roll: "",
-};
+const formValue = ref({
+  stuName: '',
+  roll: '',
+});
 
-const formArray = ref([]);
+console.log('formValue', formValue.value);
 
 const editIndex = ref(-1); // -1 means not editable field !
 
-const formSubmit = () => {
-  if (editIndex.value === -1) {
-    formArray.value.push({ name: formValue.name, roll: formValue.roll });
-  } else {
-    formArray.value[editIndex.value] = {
-      name: formValue.name,
-      roll: formValue.roll,
-    };
-    editIndex.value = -1;
+const {
+  data: students,
+  error,
+  pending,
+  refresh,
+} = useFetch(`${base_url}/students`);
+refresh();
+
+const generateBoxes = () => {
+  const boxes = [];
+  const totalData = students.value.length;
+  const maxBoxes = 4;
+
+  // Calculate the dynamic slice size to fill the boxes equally
+  const sliceSize = Math.floor(totalData / maxBoxes);
+  console.log('sliceSize', sliceSize);
+
+  for (let i = 0; i < totalData; i++) {
+    const endIndex = i + sliceSize;
+    // const boxData = students.value.slice(i, endIndex);
+    const boxData = students.value.slice(i, endIndex);
+    boxes.push(boxData);
   }
-  formValue.name = "";
-  formValue.roll = "";
+
+  return boxes;
 };
 
-const deleteFun = (id) => {
-  formArray.value.splice(id, 1);
+const formSubmit = async () => {
+  try {
+    if (formValue.value.stuName !== '' && formValue.value.roll !== '') {
+      if (editIndex.value === -1) {
+        await useFetch(`${base_url}/students`, {
+          method: 'POST',
+          body: formValue.value,
+        });
+      } else {
+        await useFetch(`${base_url}/students/${editIndex.value}`, {
+          method: 'PUT',
+          body: formValue.value,
+        });
+        editIndex.value = -1;
+      }
+
+      refresh();
+      formValue.value = { stuName: '', roll: '' };
+    }
+  } catch (error) {
+    console.error('Error submitting form:', error);
+  }
 };
 
-const editFun = (id) => {
+const deleteFun = async (id) => {
+  try {
+    await useFetch(`${base_url}/students/${id}`, {
+      method: 'DELETE',
+    });
+    refresh();
+  } catch (error) {
+    console.error('Error deleting data:', error);
+  }
+};
+
+const editFun = async (id) => {
   editIndex.value = id;
-  formValue = {
-    name: formArray.value[id].name,
-    roll: formArray.value[id].roll,
+
+  const { data: singleData } = await useFetch(`${base_url}/students/${id}`);
+
+  formValue.value = {
+    stuName: singleData.value.stuName,
+    roll: singleData.value.roll,
   };
 };
+
+console.log('data', toRaw(students.value));
 
 // import List from "~/components/List/List.vue";
 
@@ -91,7 +152,18 @@ const editFun = (id) => {
 // };
 </script>
 
-<style lang='scss'>
+<style lang="scss">
+.stu-name-wrapper {
+  margin-block: 50px;
+  display: flex;
+  flex-wrap: wrap;
+  .box {
+    padding: 10px;
+    border: 1px solid #000;
+    border-radius: 10px;
+    width: 33.33%;
+  }
+}
 .home-wrapper {
   padding: 0 10%;
   .home-wrapper-content {
